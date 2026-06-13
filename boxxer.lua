@@ -19,6 +19,32 @@ local castshape = lovr.physics.newSphereShape(HAND_RADIUS + 1)
 
 local hand_names = {'left', 'right'}
 
+local PROMPT_SPEED = 12 -- typing chars per second
+local PROMPT_HOLD = 4.5 -- how long prompt is shown, chars per second
+m.prompt_queue = {'target', 'is           ', 'destroyed  ', 'scanning the gate', '           ', 'unknown configuration', 'entering stratoverse #5'}
+m.prompt = nil
+m.prompt_hud = ''
+m.prompt_time = 0
+m.last_prompt = nil
+
+
+local function typewriter(dt)
+  if not m.prompt or m.prompt_time > #m.prompt / PROMPT_HOLD then
+    m.prompt = table.remove(m.prompt_queue, 1)
+  end
+  if not m.prompt then
+    m.prompt_hud = ''
+    return
+  end
+  if (m.last_prompt ~= m.prompt) then
+    m.prompt_time = 0
+  end
+  local trimmed = m.prompt:gsub('%s+$', '') -- poor man's timing control: use '   ' or 'pause   ' for delays
+  m.prompt_hud = string.sub(trimmed, 1, m.prompt_time * PROMPT_SPEED)
+  if #m.prompt_hud > 0 then m.prompt_hud = m.prompt_hud .. '_' end
+  m.prompt_time = m.prompt_time + dt
+  m.last_prompt = m.prompt
+end
 
 function m.generate(world)
   m.position = vector(0, 0, 170)
@@ -130,6 +156,7 @@ function m.update(dt)
       m.hand_joints[handness] = nil
     end
   end
+  typewriter(dt)
 end
 
 
@@ -144,6 +171,8 @@ function m.draw(pass)
     m.limbs[handness]:update()
     m.limbs[handness]:draw(pass, 0x0a0405, 8)
   end
+  pass:setColor(0xffccaa)
+  pass:text(m.prompt_hud, mat4(m.position, m.orientation):translate(-.3, 0.3, -RADIUS * 0.8):scale(0.1))
 end
 
 return m

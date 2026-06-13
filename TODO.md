@@ -5,12 +5,10 @@ gameplay
 
 * craft
   better limbs drawing
-  grabbing & throwing action?
   better controls, reduce jitter (https://lovr.org/docs/World:interpolate)
   HUD
   hands connected to some panel
 * scenery
-  make sure we don't spawn inside the mesh geometry smh
   column variations
     full length
     all short
@@ -24,7 +22,6 @@ gameplay
     spawning bots?
   wall mounted cannons
 * gates
-  gate geometry
   challenges in opening the gate
     eliminate enemies
     provoke klaxon to shoot beam at gate

@@ -3,12 +3,17 @@ local boxxer = require'boxxer'
 local klaxons = require'klaxons'
 local speck = require'speck'
 
+local font = lovr.graphics.newFont('PromptFont.otf', 36)
+
 
 local world = lovr.physics.newWorld{tags={'boxxer', 'level', 'hatch', 'klaxon', 'hand', 'head'}}
 world:disableCollisionBetween('boxxer', 'hand')
 world:setGravity(0, 0, 0)
 local level = levels.generate(world)
 local boxxer = boxxer.generate(world)
+
+--lovr.audio.setHRTF('cipic_124.sofa')
+
 
 function _G.determineLevel()
   local r = vector(boxxer.collider:getPosition()):length()
@@ -21,7 +26,7 @@ function _G.determineLevel()
 end
 
 
-for i = 1, 15 do
+for i = 1, 10 do
   local klaxon = klaxons.spawn(world, level)
 end
 
@@ -29,8 +34,9 @@ end
 local level_filter = nil
 
 function lovr.update(dt)
-  world:update(1/60)
   boxxer.update(dt)
+  world:update(1/60)
+  lovr.audio.setPose(boxxer.collider:getPose())
   klaxons.update(dt)
   speck.update(dt)
 end
@@ -51,6 +57,7 @@ local texture = lovr.graphics.newTexture('surface.jpg')
 local sphshape = lovr.physics.newSphereShape(0.2)
 
 function lovr.draw(pass)
+  pass:setFont(font)
   setPerspective(pass, mat4(boxxer.position, boxxer.orientation))
 
   pass:setFaceCull('back')

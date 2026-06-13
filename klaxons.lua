@@ -5,12 +5,21 @@ m.__index = m
 
 m.list = {}
 
+local klaxon_source = lovr.audio.newSource('klaxon.ogg', {spatial=true, pitchable=true })
+--local klaxon_source = lovr.audio.newSource('white_noise_long.wav', {spatial=true})
+klaxon_source:setLooping(true)
+klaxon_source:setSpatialization(1)
+--klaxon_source:setVolume(.3)
+klaxon_source:setAbsorption(true)
+klaxon_source:setFalloff(true)
+
 function m.spawn(world, level)
   local self = setmetatable({}, m)
   local lvl = determineLevel()
   self.level = lvl
   self.world = world
   self.alert = false
+  self.destroyed_duration = nil
   local r
   if lvl > 1 then
     r = level.radii[lvl - 1] * 1.1 + math.random() * (level.radii[lvl] - level.radii[lvl - 1]) * 0.7
@@ -25,9 +34,13 @@ function m.spawn(world, level)
   slider:setLimits(0, 3)
   slider:setMotorMode('position')
   slider:setMotorTarget(2)
-  --slider:setMaxMotorForce(4)
   slider:setMotorSpring(0.5, -.1)
+  slider:setSpring(0.5, -.1)
   self.slider = slider
+  self.klaxon_source = klaxon_source:clone()
+  self.klaxon_source:seek(math.random())
+  self.klaxon_source:play()
+
   table.insert(m.list, self)
   return self
 end
@@ -35,12 +48,22 @@ end
 
 function m.update(dt)
   for i, self in ipairs(m.list) do
-    if self.slider and self.slider:getForce() > 5e7 then
+    local position = vector(self.collider:getPosition())
+    self.klaxon_source:setPosition(position)
+    if self.slider and self.slider:getPosition() > 5 then
       self.slider:destroy()
       self.slider = nil
+      self.destroyed_duration = 0
+    end
+    if self.destroyed_duration then
+      self.destroyed_duration = self.destroyed_duration + dt
+      if self.destroyed_duration > 2 then
+        self.klaxon_source:stop()
+      else
+        self.klaxon_source:setPitch(1 - self.destroyed_duration * 0.45)
+      end
     end
     if not self.alert then
-
     else
     end
   end
