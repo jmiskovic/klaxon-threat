@@ -6,3 +6,7 @@ The hour is upon us: to earn back our dignity, and to grab our freedom from evil
 ## Attributions
 
 https://en.wikipedia.org/wiki/File:WWII_submarine_dive_klaxon.ogg
+
+Prompt font
+
+Palettes

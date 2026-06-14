@@ -11,22 +11,25 @@ local FORCE = 2e8
 local TORQUE = 3e7
 
 local HAND_RADIUS = 0.9
-local HAND_FORCE = 9e6
+local HAND_FORCE = 2e8
 local HAND_EXTENSION = 60
 
 local castshape = lovr.physics.newSphereShape(HAND_RADIUS + 1)
-
 
 local hand_names = {'left', 'right'}
 
 local PROMPT_SPEED = 12 -- typing chars per second
 local PROMPT_HOLD = 4.5 -- how long prompt is shown, chars per second
-m.prompt_queue = {'target', 'is           ', 'destroyed  ', 'scanning the gate', '           ', 'unknown configuration', 'entering stratoverse #5'}
+m.prompt_queue = {}
 m.prompt = nil
 m.prompt_hud = ''
 m.prompt_time = 0
 m.last_prompt = nil
 
+
+function _G.addText(line)
+  table.insert(m.prompt_queue, line)
+end
 
 local function typewriter(dt)
   if not m.prompt or m.prompt_time > #m.prompt / PROMPT_HOLD then
@@ -62,16 +65,16 @@ function m.generate(world)
   m.collider:setRestitution(0)
   m.collider:setAngularDamping(2.3)
   m.collider:setContinuous(true)
-  m.hands = {}
+  m.fists = {}
   m.hand_joints = {}
   m.limbs = {}
   for i, handness in ipairs(hand_names) do
     local hand = world:newSphereCollider(m.position + vector(handness == 'left' and -3 or 3, 0, -10), HAND_RADIUS)
-    hand:setTag('hand')
+    hand:setTag('fist')
     hand:setDegreesOfFreedom('xyz', '')
     hand:setLinearDamping(50)
     hand:setContinuous(true)
-    m.hands[handness] = hand
+    m.fists[handness] = hand
     m.limbs[handness] = limb.new({ 8, 7 }, m.collider, hand, vector(handness == 'left' and -2 or 2, -1, -0.3))
     m.limbs[handness].thickness = 0.3
   end
@@ -138,15 +141,14 @@ function m.update(dt)
   local head_position = vector(lovr.headset.getPosition())
   for i, handness in ipairs(hand_names) do
     local position = vector(lovr.headset.getPosition(handness))
-    local collider = m.hands[handness]
+    local collider = m.fists[handness]
     local actual_arm = vector(collider:getPosition())
     local target_arm = boxxer_pose:mul((position - vector(0, -0.3, -0.3) - head_position) * vector(HAND_EXTENSION / 2, HAND_EXTENSION * 3 / 8, HAND_EXTENSION) + vector(0, 0, -10))
     target_arm = target_arm + m.collider:getLinearVelocity() * dt
-    collider:applyForce((target_arm - actual_arm) * HAND_FORCE)
+    collider:applyForce((target_arm - actual_arm) * HAND_FORCE * dt)
     if (lovr.headset.isDown(handness, 'grip') or lovr.system.isKeyDown('lshift'))
       and not m.hand_joints[handness] then
-      local grabbed_collider = m.world:overlapShape(castshape, actual_arm, quaternion(), 0, '~hand ~boxxer')
-      --require'repl'()
+      local grabbed_collider = m.world:overlapShape(castshape, actual_arm, quaternion(), 0, '~fist ~boxxer')
       if grabbed_collider and not grabbed_collider:isKinematic() then
         m.hand_joints[handness] = lovr.physics.newWeldJoint(collider, grabbed_collider)
       end
@@ -166,7 +168,7 @@ function m.draw(pass)
   end
   pass:setColor(0.4, 0.2, 0.2)
   for i, handness in ipairs(hand_names) do
-    pass:sphere(vector(m.hands[handness]:getPosition()), HAND_RADIUS, 0, 0,1,0, 12)
+    pass:sphere(vector(m.fists[handness]:getPosition()), HAND_RADIUS, 0, 0,1,0, 12)
     m.limbs[handness]:nudge(.1 * vector(handness == 'left' and -1 or 1, -.3, 0))
     m.limbs[handness]:update()
     m.limbs[handness]:draw(pass, 0x0a0405, 8)

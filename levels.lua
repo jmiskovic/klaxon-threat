@@ -6,9 +6,8 @@ local m = {}
 
 
 local LAYER_COUNT = 7
-local radii = {100, 300, 500, 700, 900, 1100, 1300, 1500, 1700, 1900, 2100, 2300, 2500, 2700}
-
-for i = 1, #radii do radii[i] = 20 + 120 * i end
+local radii = {}
+for i = 1, LAYER_COUNT do radii[i] = 20 + 120 * i end
 
 local COLUMN_RADIUS = 24
 local SHELL_THICKNESS = 8
@@ -54,7 +53,7 @@ function m.generate(world)
           :transform(mat4():scale(radii[i-1] + SHELL_THICKNESS):rotate(2 * math.pi * (i-1) / LAYER_COUNT, 0,1,0))
           :setColor(palettes[1][i])
       local inner_collider = world:newMeshCollider(inner_sphere.vlist, inner_sphere.ilist)
-      --inner_collider:setSensor(true)
+      inner_collider:setTag('level')
       mesh:mergeIn(inner_sphere)
       --]]
 
@@ -107,6 +106,7 @@ function m.generate(world)
         }
         local hatch_mesh, hatch_shape = solids.convexHull(points)
         local hatch_collider = world:newCollider(0, 0, 0)
+        hatch_collider:setTag('hatch')
         hatch_collider:addShape(hatch_shape)
         hatch_collider:setMass(5000)
         hatch_collider:setAwake(false)
