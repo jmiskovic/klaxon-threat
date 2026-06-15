@@ -8,10 +8,7 @@ gate sensor + craft -> change level:
 
 
 * craft
-  better limbs drawing
-  better controls, reduce jitter (https://lovr.org/docs/World:interpolate)
   HUD
-  hands connected to some panel
 * scenery
   column variations
     full length

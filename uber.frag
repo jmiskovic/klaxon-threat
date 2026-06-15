@@ -1,4 +1,47 @@
-/*** spherical harmonics shading ***/
+/* point light shadows */
+layout(set = 2, binding = 1) uniform textureCube ShadowDepthBuffer;
+uniform vec3 LightPositionWorld;
+uniform vec3 LightColor;
+uniform vec3 ShadowColor;
+uniform float ShadowQuadraticFalloffExp;
+uniform float ShadowFarPlane;
+
+
+float reduceBleeding(float p_max, float amount) {
+  return clamp((p_max - amount) / (1. - amount), 0., 1.);
+}
+
+float calculateVSMShadow(vec2 moments, float currentDepth) {
+  float bias = 0.0001;
+  currentDepth -= bias;
+  if (currentDepth <= moments.x) // fully lit
+      return 1.0;
+  float variance = moments.y - (moments.x * moments.x);
+  variance = max(variance, 1e-6);
+  float d = currentDepth - moments.x;
+  // Chebyshev's inequality: P(x >= currentDepth) <= variance / (variance + d^2)
+  // This gives an upper bound on the probability that the occluder depth is
+  // greater than or equal to the current depth, i.e., the probability of *not* being shadowed.
+  float p_max = variance / (variance + d * d);
+  return p_max;
+}
+
+void addShadow(inout vec4 color) {
+  vec3 lightVec = PositionWorld - LightPositionWorld;
+  float distSq = dot(lightVec, lightVec);
+  float dist = sqrt(distSq);
+
+  float currentDepthNormalized = dist / ShadowFarPlane;
+  vec3 lookupDir = normalize(vec3(-lightVec.x, lightVec.y, lightVec.z));
+  vec2 moments = getPixel(ShadowDepthBuffer, lookupDir).rg;
+  float lit = calculateVSMShadow(moments, currentDepthNormalized);
+  lit = reduceBleeding(lit, 0.05);
+  float attenuation = 1.0 / (1.0 + pow(10., ShadowQuadraticFalloffExp) * distSq);
+  color.rgb = color.rgb * ShadowColor + color.rgb * lit * attenuation * LightColor;
+}
+
+
+/* spherical harmonics shading */
 vec3 evaluateLightProbe(vec3 probe[9], vec3 dir) {
   return
     .88622692545276 * probe[0] +
@@ -32,7 +75,7 @@ float ppow(float x, float y) {
   return exp(log(x_clamp) * y);
 }
 
-/*** distance fog ***/
+/* distance fog */
 const float FogStrength = 0.3;
 const float FogDistance = 0.2;
 const float FogDistanceMul = 0.5;
@@ -53,7 +96,7 @@ void addFog(inout vec4 color) {
 
 
 
-/*** surface texture ***/
+/* surface texture */
 layout(location = 6) in vec3 PositionWrapped;
 
 
@@ -73,7 +116,7 @@ void addSurfaceTexture(inout vec4 color) {
 
 
 
-/*** textured terrain ***/
+/* textured terrain */
 layout(constant_id = 0) const bool flag_textured_terrain = false;
 uniform texture2D TerrainTexture;
 layout(location = 7) in vec2 TerrainUV;
@@ -85,7 +128,7 @@ void addTerrainTexture(inout vec4 color) {
 
 
 
-/*** text handling ***/
+/* text handling */
 in flat int isFontDraw;
 in vec3 normal;
 
@@ -100,7 +143,6 @@ float median(float r, float g, float b) {
 
 
 
-/*** composed uber shader ***/
 vec4 lovrmain() {
   vec4 color = DefaultColor;
 
@@ -118,6 +160,7 @@ vec4 lovrmain() {
   color.a = 1.0;
 
   addShading(color);
+  addShadow(color);
   addSurfaceTexture(color);
   addFog(color);
 

@@ -2,16 +2,12 @@ local m = {}
 m.__index = m
 
 
-function m.new(lengths, origin_collider, target_collider, origin_offset, target_offset)
+function m.new(lengths, origin, target)
   local self = setmetatable({}, m)
   self.lengths = lengths
   self.strength = 0.5
-  self.origin_collider = origin_collider
-  self.target_collider = target_collider
-  self.origin_offset = origin_offset or vector(0)
-  self.target_offset = target_offset or vector(0)
-  self.origin = vector(origin_collider:getWorldPoint(origin_offset))
-  self.target = vector(target_collider:getWorldPoint(target_offset))
+  self.origin = origin
+  self.target = target or origin
   self.thickness = 0.4
   self.joints = {}
   local direction = vector.normalize(self.target - self.origin)
@@ -25,15 +21,14 @@ function m.new(lengths, origin_collider, target_collider, origin_offset, target_
 end
 
 function m:nudge(offset)
-  offset = quaternion(self.origin_collider:getOrientation()) * offset
   for i = 2, #self.joints - 1 do
     self.joints[i] = self.joints[i] + offset
   end
 end
 
-function m:update(strength)
-  self.origin = vector(self.origin_collider:getWorldPoint(self.origin_offset))
-  self.target = vector(self.target_collider:getWorldPoint(self.target_offset))
+function m:update(origin, target, strength)
+  self.origin = origin
+  self.target = target
   strength = math.min(1, strength or self.strength)
   self.joints[#self.joints] = vector.lerp(self.joints[#self.joints], self.target, strength)
   for link = #self.joints - 1, 1, -1 do

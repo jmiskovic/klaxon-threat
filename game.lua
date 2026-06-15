@@ -2,12 +2,18 @@ local levels = require'levels'
 local boxxer = require'boxxer'
 local klaxons = require'klaxons'
 local speck = require'speck'
+local light = require'point_light'
 
-local font = lovr.graphics.newFont('PromptFont.otf', 36)
+light.load(512)
+light.gpu.light_color = vector(1, 0.95, 0.7)
+light.gpu.shadow_color = vector(0.4, 0.3, 0.4)
+light.gpu.falloff_exp = -4
 
 
-local world = lovr.physics.newWorld{tags={'boxxer', 'level', 'hatch', 'klaxon', 'fist', 'head'}}
+
+local world = lovr.physics.newWorld{tags={'boxxer', 'level', 'hatch', 'hatch_sensor', 'klaxon', 'fist', 'head'}}
 world:disableCollisionBetween('boxxer', 'fist')
+world:disableCollisionBetween('fist', 'hatch_sensor') -- lol
 world:setGravity(0, 0, 0)
 local level = levels.generate(world)
 local boxxer = boxxer.generate(world)
@@ -21,8 +27,10 @@ thump_source:setSpatialization(1); thump_source:setAbsorption(true); thump_sourc
 
 function _G.determineLevel()
   local r = vector(boxxer.collider:getPosition()):length()
+  print('r', r)
   for i = 1, #level.radii do
     if r < level.radii[i]  then
+      print('level.radii[i]', level.radii[i])
       return i
     end
   end
@@ -35,14 +43,14 @@ world:setCallbacks{
   enter = function(a, b, contact)
     local snd = thump_source:clone()
     snd:setPosition(contact:getPoints())
-    snd:setVolume(contact:getOverlap() * 1e2)
+    snd:setVolume(vector(a:getLinearVelocity()):distance(vector(b:getLinearVelocity())) * 1e-2)
     snd:play()
     local atag = a:getTag(); local btag = b:getTag()
     if atag == 'boxxer' or btag == 'boxxer' then
       local other = atag == 'boxxer' and b or a
       local otag = other:getTag()
       print('boxxer collision')
-      if otag == 'hatch' then
+      if otag == 'hatch_sensor' then
         hatch_enter_level = determineLevel()
       end
     elseif atag == 'fist' or btag == 'fist' then
@@ -55,8 +63,9 @@ world:setCallbacks{
     if atag == 'boxxer' or btag == 'boxxer' then
       local other = atag == 'boxxer' and b or a
       local otag = other:getTag()
-      if otag == 'hatch' and hatch_enter_level then
+      if otag == 'hatch_sensor' and hatch_enter_level then
         local level = determineLevel()
+        print('hatch entry', level, hatch_enter_level)
         if level < hatch_enter_level then
           other:setSensor(false)
           print('solidifying the gate behind')
@@ -67,7 +76,7 @@ world:setCallbacks{
 }
 
 
-for i = 1, 0 do
+for i = 1, 1 do
   local klaxon = klaxons.spawn()
 end
 
@@ -80,6 +89,8 @@ function lovr.update(dt)
   lovr.audio.setPose(boxxer.collider:getPose())
   klaxons.update(dt)
   speck.update(dt)
+  light.gpu.position = vector(boxxer.fists.left:getPosition()):lerp(
+    vector(boxxer.fists.right:getPosition()), 0.5)
 end
 
 
@@ -97,7 +108,24 @@ local texture = lovr.graphics.newTexture('surface.jpg')
 
 local sphshape = lovr.physics.newSphereShape(0.2)
 
-function lovr.draw(pass)
+function lovr.draw(wpass)
+  local pass
+  pass = light.getPass()
+  for i, mesh in ipairs(level.layer_meshes) do
+    if (not level_filter) or level_filter == i then
+      mesh:draw(pass)
+    end
+  end
+  for i, mesh in ipairs(level.hatch_meshes) do
+    mesh:draw(pass, mat4(mesh.collider:getPose()))
+  end
+
+  boxxer.draw(pass)
+  klaxons.draw(pass)
+
+  lovr.graphics.submit(pass)
+  pass = wpass
+
   pass:setFont(font)
   --pass:text(lovr.timer.getFPS(), 0.2, 1.5, -0.5, 0.05)
   setPerspective(pass, mat4(boxxer.position, boxxer.orientation))
@@ -106,6 +134,8 @@ function lovr.draw(pass)
   pass:setSampler('nearest')
   pass:setShader(shader)
   pass:send('surface_texture', texture)
+  light.send(pass)
+
 
   if lovr.system.isKeyDown('tab') then
     require'phywire'.xray(pass, world)
@@ -124,9 +154,10 @@ function lovr.draw(pass)
 
   boxxer.draw(pass)
   klaxons.draw(pass)
+  pass:setShader()
   speck.draw(pass)
 
-  --require'phywire'.draw(pass, world)
+  require'phywire'.draw(pass, world)
 
   --[[
   pass:setColor(0, 1, 0)

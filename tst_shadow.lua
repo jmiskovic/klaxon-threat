@@ -8,7 +8,6 @@ light.gpu.shadow_color = vector(0.2, 0.15, 0.2)
 
 local shader = lovr.graphics.newShader('unlit', [[
 /*** point light shadow receiving ***/
-layout(constant_id = 2) const bool flag_receive_shadow = true;
 layout(set = 2, binding = 1) uniform textureCube ShadowDepthBuffer;
 uniform vec3 LightPositionWorld;
 uniform vec3 LightColor;
@@ -36,7 +35,6 @@ float calculateVSMShadow(vec2 moments, float currentDepth) {
 }
 
 void addShadow(inout vec4 color) {
-  if (!flag_receive_shadow) return;
   vec3 lightVec = PositionWorld - LightPositionWorld;
   float distSq = dot(lightVec, lightVec);
   float dist = sqrt(distSq);

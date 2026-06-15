@@ -4,10 +4,12 @@ local dots = require'dots'
 
 local m = {}
 
+local blob_spawners = [==[{color={0.2392,0.2996,0.2538},drawers={{name="spheres",param={radius=0.0281,segments=14.05}}},emit_rate=1366,lifetime=0.8392,lifetime_random=0.1,lightness_random=0.25,movers={{name="size fade",param={strength=1.552,target=1.541,tau=0.4892}},{name="size fade",param={strength=1.324,target=0.06091,tau=0.9372}}},position={__type="vector",x=0,y=0,z=0},spawners={{name="cube",param={size=15.11}}},streaming=true,velocity={__type="vector",x=0,y=0,z=0},velocity_random=1e-05}]==]
+
 
 local LAYER_COUNT = 7
 local radii = {}
-for i = 1, LAYER_COUNT do radii[i] = 20 + 120 * i end
+for i = 1, LAYER_COUNT do radii[i] = -20 + 120 * i end
 
 local COLUMN_RADIUS = 24
 local SHELL_THICKNESS = 8
@@ -33,6 +35,7 @@ function m.generate(world)
   level.radii = radii
   level.hatch_meshes = {}
   level.layer_meshes = {}
+  level.layer_barrels = {}
   for i = 1, LAYER_COUNT do
     local palette = palettes[i]
     local mesh = solids.new()
@@ -41,7 +44,7 @@ function m.generate(world)
         :clone()
         :transform(mat4():scale(radii[i]):rotate(2 * math.pi * i / LAYER_COUNT, 0,1,0))
         :flipWinding()
-        :setColor(palette[1])
+        :setColor(palette[5])
     local outer_collider = world:newMeshCollider(outer_sphere.vlist, outer_sphere.ilist)
     outer_collider:setTag('level')
     mesh:mergeIn(outer_sphere)
@@ -64,7 +67,7 @@ function m.generate(world)
       hatch:updateNormals()
       local hatch_normal = vector(hatch.vlist[1][4], hatch.vlist[1][5], hatch.vlist[1][6])
       local hatch_sensor = world:newMeshCollider(hatch.vlist, hatch.ilist)
-      hatch_sensor:setTag('hatch')
+      hatch_sensor:setTag('hatch_sensor')
       hatch_sensor:setSensor(true)
       --]]
       ---[[ HATCH FRAME VISUALS
@@ -157,8 +160,9 @@ function m.generate(world)
 
   for i = 1, 300 do
     local barrel = world:newCylinderCollider(
-      (math.random() - 0.5) * 200, (math.random() - 0.5) * 200, (math.random() - 0.5) * 200,
+      (math.random() - 0.5) * 80, (math.random() - 0.5) * 80, (math.random() - 0.5) * 80,
       2, 5)
+    barrel:setOrientation(quaternion.euler(lovr.math.random() * 2 * math.pi, lovr.math.random() * 2 * math.pi, lovr.math.random() * 2 * math.pi))
     barrel:setMass(barrel:getMass() / 4)
   end
   return level

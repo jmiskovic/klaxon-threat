@@ -1,39 +1,50 @@
 local palettes = require'palettes'
+local speck = require'speck'
 
 local m = {}
 m.__index = m
 
 m.list = {}
 
+local deflector_preset = [==[{color={0.962,0.02962,0.006644},drawers={{name="spheres",param={radius=0.4257,segments=7.025}}},emit_rate=297.6,lifetime=0.643,lifetime_random=0.2082,lightness_random=0.25,movers={{name="color fade",param={color={1,0.9708,0,1},strength=0.2644,tau=0.2621}},{name="color fade",param={color={0,0.5735,0.9452,1},strength=1.804,tau=0.8503}},{name="color fade",param={color={0.8122,0,0.6391,1},strength=3.548,tau=1.311}},{name="size fade",param={strength=1.547,target=0.4222,tau=0.9934}}},position={__type="vector",x=0,y=0,z=0},spawners={{name="sphere",param={radius=1.365}}},streaming=false,velocity={__type="vector",x=0,y=-0.0001672,z=0},velocity_random=2.817}]==]
+
+deflector_shape = lovr.physics.newSphereShape(3)
+
 local klaxon_source = lovr.audio.newSource('klaxon.ogg', {spatial=true, pitchable=true })
 klaxon_source:setSpatialization(1); klaxon_source:setAbsorption(true); klaxon_source:setFalloff(true)
 klaxon_source:setLooping(true)
 
 local DETECTION_RANGE = 100
+local STOP_RANGE = 30
 local AVOID_RANGE = 30
-local FORCE = 4e8
-local TORQUE = 4e8
+local FORCE = 3e8
+local TORQUE = 2e8
 
-local castshape = lovr.physics.newSphereShape(10)
+local DEFLECTOR_COOLDOWN = 15
+local DEFLECTOR_SPEED = 30
+local DEFLECTOR_FORCE = 8e9
 
+local avoid_shape = lovr.physics.newSphereShape(10)
 
 function m.spawn()
   local self = setmetatable({}, m)
   local lvl = determineLevel()
+  self.mylvl = lvl
   self.is_alert = false
   self.destroyed_duration = nil
   local r
   if lvl > 1 then
-    r = level.radii[lvl - 1] * 1.1 + math.random() * (level.radii[lvl] - level.radii[lvl - 1]) * 0.7
+    r = m.level.radii[lvl - 1] * 1.1 + math.random() * (m.level.radii[lvl] - m.level.radii[lvl - 1]) * 0.7
   else
-    r = math.random() * level.radii[lvl] * 0.9
+    r = math.random() * m.level.radii[lvl] * 0.9
   end
   local pos = vector(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5):normalize() * r
 
-  self.collider = world:newBoxCollider(pos, 10, 15, 15)
-  self.side_collider = world:newBoxCollider(pos + vector(7.5, 0, 0),  5, 15, 15)
+  self.collider = m.world:newBoxCollider(pos, 10, 15, 15)
+  self.side_collider = m.world:newBoxCollider(pos + vector(7.5, 0, 0),  5, 15, 15)
   self.collider:setTag('klaxon'); self.side_collider:setTag('klaxon')
-  self.collider:setAngularDamping(2); self.side_collider:setAngularDamping(2)
+  self.collider:setLinearDamping(0.8); self.side_collider:setLinearDamping(0.8)
+  self.collider:setAngularDamping(1.2); self.side_collider:setAngularDamping(1.2)
   local slider = lovr.physics.newSliderJoint(self.collider, self.side_collider, vector(1, 0, 0))
   slider:setLimits(0, 3)
   slider:setMotorMode('position')
@@ -45,6 +56,9 @@ function m.spawn()
   self.klaxon_source:seek(math.random())
   self.target = pos
   table.insert(m.list, self)
+  self.deflector_cooldown = 3
+  self.deflector_projectile = nil
+  self.deflector_emitter = speck.emitterFromString(deflector_preset)
   return self
 end
 
@@ -74,10 +88,10 @@ function m.update(dt)
         addText('<enemy klaxon locked onto us>')
         self.is_alert = true
         self.klaxon_source:play()
-        --self.target = boxxer_position
+        self.target = boxxer_position
       else
-        if position:distance(self.target) < 10 or
-          m.world:shapecast(castshape, position, position + (self.target - position):normalize() * AVOID_RANGE, nil, 'level') then
+        if position:distance(self.target) < STOP_RANGE or
+          m.world:shapecast(avoid_shape, position, position + (self.target - position):normalize() * AVOID_RANGE, nil, 'level') then
           for i = 1, 5 do
             local potential_target = position + vector(1e3 * (lovr.math.random() - 0.5), 1e3 * (lovr.math.random() - 0.5), 1e3 * (lovr.math.random() - 0.5))
             local collider, shape, x, y, z = m.world:raycast(position, potential_target, '~klaxon')
@@ -91,17 +105,55 @@ function m.update(dt)
         end
       end
     else -- hunting
-      --self.target = boxxer_position
+      self.target = boxxer_position
+      ---[[ deflector
+      self.deflector_cooldown = self.deflector_cooldown - dt
+      if not self.deflector_projectile and self.deflector_cooldown <= 0 then
+        self.deflector_cooldown = DEFLECTOR_COOLDOWN
+        self.deflector_projectile = { position = position, velocity = (boxxer_position - position):normalize() }
+        self.deflector_emitter:stream()
+        self.deflector_emitter:setPosition(self.deflector_projectile.position)
+      end
+      if self.deflector_projectile then
+        self.deflector_projectile.position = self.deflector_projectile.position + self.deflector_projectile.velocity * dt * DEFLECTOR_SPEED
+        self.deflector_emitter:setPosition(self.deflector_projectile.position)
+        m.world:overlapShape(deflector_shape, self.deflector_projectile.position, nil, 10, '~klaxon',
+          function(collider, shape, x, y, z)
+            if not self.deflector_projectile then return true end
+            local pos = vector(x, y, z)
+            local dir = (pos - self.deflector_projectile.position):normalize()
+            collider:applyForce(dir * DEFLECTOR_FORCE * dt)
+            if self.deflector_projectile.position:distance(pos) < 1 then
+              self.deflector_projectile = nil
+              self.deflector_emitter:stop()
+            end
+          end)
+      end
+      --]]
     end
+    -- move
     local dir = (self.target - position):normalize()
     local target_orientation = quaternion.lookdir(dir, vector(self.collider:getWorldPoint(0, 1, 0)))
     local orientation_err = target_orientation * orientation:conjugate()
     local _, ax, ay, az = orientation_err:toangleaxis()
-    self.collider:applyForce(dir * dt * FORCE)
+    if position:distance(self.target) > STOP_RANGE then
+      --self.collider:applyForce(dir * dt * FORCE)
+      --self.side_collider:applyForce(dir * dt * FORCE)
+    end
+
     self.collider:applyTorque(ax * TORQUE, ay * TORQUE, az * TORQUE)
-    self.side_collider:applyForce(dir * dt * FORCE)
     self.side_collider:applyTorque(ax * TORQUE * dt, ay * TORQUE * dt, az * TORQUE * dt)
-  end
+    -- loosen join when grabbed
+    if self.slider then
+      if #self.collider:getJoints() > 1 and #self.side_collider:getJoints() > 1 then
+        self.slider:setLimits()
+        self.slider:setMotorMode()
+      else
+        self.slider:setLimits(0, 3)
+        self.slider:setMotorMode('position')
+      end
+    end
+  end -- klaxon iteration
 end
 
 
@@ -109,19 +161,21 @@ function m.draw(pass)
   for i, self in ipairs(m.list) do
     local position = vector(self.collider:getPosition())
     local orientation = quaternion(self.collider:getOrientation())
-    pass:setColor(palettes[self.level][3])
+    pass:setColor(palettes[self.mylvl][3])
     pass:box(position, 10, 15, 15, orientation)
 
     local side_position = vector(self.side_collider:getPosition())
     local orientation = quaternion(self.side_collider:getOrientation())
-    pass:setColor(palettes[self.level][4])
+    pass:setColor(palettes[self.mylvl][4])
     pass:box(side_position, 5, 15, 15, orientation)
 
-    pass:setColor(palettes[self.level][5])
+    pass:setColor(palettes[self.mylvl][5])
     pass:sphere(position:lerp(side_position, 0.65), 5,  0, 0,1,0, 8)
 
+    --[[ debug destination
     pass:setColor(0.4,0.4,0.4)
     pass:capsule(position, self.target, 0.5, 8)
+    --]]
   end
 end
 

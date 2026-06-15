@@ -27,8 +27,8 @@
      showborder="false"
      borderlayer="true"
      inkscape:zoom="1.0842234"
-     inkscape:cx="536.3286"
-     inkscape:cy="329.7291"
+     inkscape:cx="561.2312"
+     inkscape:cy="520.64916"
      inkscape:window-width="3430"
      inkscape:window-height="1380"
      inkscape:window-x="0"
@@ -76,7 +76,8 @@
          style="font-size:16.9333px;letter-spacing:-1.21708px;fill:#2c2a2c;stroke:none;stroke-width:1"
          x="156.95944"
          y="189.1718"
-         dy="0 -3.7962201"><tspan
+         dy="0 -3.7962201"
+         dx="0 0 -0.48806053 0 0 0 0.48806053 0.24403027 0 0 0 0 0 0 0 0.24403027 -1.9522421"><tspan
    style="font-size:22.5778px"
    id="tspan4"
    dy="3.7962201">T</tspan>HE KLAXON THREAT <tspan
@@ -89,7 +90,7 @@
          y="204.96214"
          id="tspan2"
          dy="-6.2119966"
-         dx="-10.353333">· VENDETTA IN STRATOVERSE ·</tspan></text>
+         dx="-10.353333 0 0 0 0 0 0 0 0 -0.97612113 0 0 0 0 0 -0.24403027 -0.24403027 0 -0.97612113">· VENDETTA IN STRATOVERSE ·</tspan></text>
     <path
        style="display:inline;fill:#2c2a2c;stroke-width:0.786539;stroke-linecap:round;stroke-linejoin:round"
        id="path1"
