@@ -1,4 +1,6 @@
 function lovr.conf(t)
   t.window.resizable = true
-  t.headset.supersample = 0.5
+  if arg[1] == '--res' then
+    t.headset.supersample = tonumber(arg[2])
+  end
 end

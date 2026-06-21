@@ -1,89 +1,115 @@
+local dispensers = require'dispensers'
+local palettes = require'palettes'
 local levels = require'levels'
 local boxxer = require'boxxer'
 local klaxons = require'klaxons'
 local speck = require'speck'
 local light = require'point_light'
 
-light.load(512)
-light.gpu.light_color = vector(1, 0.95, 0.7)
-light.gpu.shadow_color = vector(0.4, 0.3, 0.4)
-light.gpu.falloff_exp = -4
-
-
-
-local world = lovr.physics.newWorld{tags={'boxxer', 'level', 'hatch', 'hatch_sensor', 'klaxon', 'fist', 'head'}}
-world:disableCollisionBetween('boxxer', 'fist')
-world:disableCollisionBetween('fist', 'hatch_sensor') -- lol
-world:setGravity(0, 0, 0)
-local level = levels.generate(world)
-local boxxer = boxxer.generate(world)
-
-klaxons.world = world
-klaxons.boxxer = boxxer
-klaxons.level = level
-
-local thump_source = lovr.audio.newSource('thump.ogg', {spatial=true, pitchable=true })
-thump_source:setSpatialization(1); thump_source:setAbsorption(true); thump_source:setFalloff(true)
-
 function _G.determineLevel()
   local r = vector(boxxer.collider:getPosition()):length()
-  print('r', r)
-  for i = 1, #level.radii do
-    if r < level.radii[i]  then
-      print('level.radii[i]', level.radii[i])
+  for i = 1, #levels.radii do
+    if r < levels.radii[i]  then
       return i
     end
   end
-  return #level.radii
+  return #levels.radii
 end
 
-local hatch_enter_level = nil
+
+local world = lovr.physics.newWorld{tags={'boxxer', 'level', 'hatch', 'hatch_sensor', 'hatch_broadcast', 'hatch_lock', 'klaxon', 'fist', 'head', 'barrel', 'dispenser'}}
+world:disableCollisionBetween('boxxer', 'fist')
+world:disableCollisionBetween('fist', 'hatch_sensor') -- lol
+world:disableCollisionBetween('barrel', 'hatch_broadcast')
+world:setGravity(0, 0, 0)
+
+klaxons.world = world
+dispensers.world = world
+
+levels.generate(world, klaxons, boxxer)
+levels.changeLayer(nil, #levels.radii)
+
+boxxer.position = levels.initial_boxxer_position
+boxxer.orientation = levels.initial_boxxer_orientation
+boxxer.generate(world)
+
+local thump_source = lovr.audio.newSource('thump.ogg', {spatial=true, pitchable=true })
+thump_source:setSpatialization(1); thump_source:setAbsorption(true); thump_source:setFalloff(15, .1)
+
+local explode_source = lovr.audio.newSource('xplode.ogg', {spatial=true, pitchable=true })
+explode_source:setSpatialization(1); explode_source:setAbsorption(true); explode_source:setFalloff(15, .1)
+
+local BARREL_EXPLODE_VELOCITY = 25
+
+
+local to_explode = {}
 
 world:setCallbacks{
   enter = function(a, b, contact)
     local snd = thump_source:clone()
+    snd:setPitch(1 + lovr.math.randomNormal(0.1, 0))
+    local impact_velocity = vector(a:getLinearVelocity()):distance(vector(b:getLinearVelocity()))
     snd:setPosition(contact:getPoints())
-    snd:setVolume(vector(a:getLinearVelocity()):distance(vector(b:getLinearVelocity())) * 1e-2)
+    snd:setVolume(impact_velocity * 1e-2)
     snd:play()
     local atag = a:getTag(); local btag = b:getTag()
     if atag == 'boxxer' or btag == 'boxxer' then
       local other = atag == 'boxxer' and b or a
       local otag = other:getTag()
-      print('boxxer collision')
-      if otag == 'hatch_sensor' then
-        hatch_enter_level = determineLevel()
+      if otag == 'hatch_broadcast' then
+        local locked = #levels.hatch_locks[current_level] > 1
+        addText(locked and 'hatch seems locked by those diamond contraptions' or
+                'hatch is unlocked and i can go beyond it')
       end
     elseif atag == 'fist' or btag == 'fist' then
       local other = atag == 'fist' and b or a
-      print('fist collision')
+    end
+    if atag == 'barrel' or btag == 'barrel' then
+      local other = atag == 'barrel' and b or a
+      local otag = other:getTag()
+      if impact_velocity > BARREL_EXPLODE_VELOCITY and otag ~= 'fist' then
+        table.insert(to_explode, atag == 'barrel' and a or b)
+      end
     end
   end,
+--[[
+local to_change_level = nil
+
   exit = function(a, b)
     local atag = a:getTag(); local btag = b:getTag()
     if atag == 'boxxer' or btag == 'boxxer' then
       local other = atag == 'boxxer' and b or a
       local otag = other:getTag()
-      if otag == 'hatch_sensor' and hatch_enter_level then
+      if otag == 'hatch_sensor' and current_level then
+        print('exit hatch_sensor')
         local level = determineLevel()
-        print('hatch entry', level, hatch_enter_level)
-        if level < hatch_enter_level then
-          other:setSensor(false)
-          print('solidifying the gate behind')
+        if level ~= current_level - 1 then print('level mismatch, expected', current_level - 1, 'got', level) end
+        if level < current_level then
+          to_change_level = level
+          other:setSensor(false) -- solidifying the gate behind
         end
       end
     end
+  end,
+  if to_change_level then
+    levels.changeLayer(current_level, to_change_level)
+    current_level = to_change_level
+    to_change_level = nil
   end
+--]]
 }
-
-
-for i = 1, 1 do
-  local klaxon = klaxons.spawn()
-end
-
 
 local level_filter = nil
 
 function lovr.update(dt)
+  for i, explode in ipairs(to_explode) do
+    local snd = explode_source:clone()
+    snd:setPitch(1 + lovr.math.randomNormal(0.1, 0))
+    snd:setPosition(explode:getPosition())
+    snd:play()
+    levels.explodeBarrel(explode)
+  end
+  to_explode = {}
   boxxer.update(dt)
   world:update(1/60)
   lovr.audio.setPose(boxxer.collider:getPose())
@@ -102,7 +128,11 @@ local function setPerspective(pass, boxxer_pose)
 end
 
 
-
+light.load(512)
+light.gpu.light_color = vector(1, 0.95, 0.7)
+light.gpu.shadow_color = vector(0.4, 0.3, 0.4)
+light.gpu.falloff_exp = -4
+_G.current_fog = vec3(0.8, 0.8, 0.8)
 local shader = lovr.graphics.newShader('uber.vert', 'uber.frag')
 local texture = lovr.graphics.newTexture('surface.jpg')
 
@@ -111,17 +141,16 @@ local sphshape = lovr.physics.newSphereShape(0.2)
 function lovr.draw(wpass)
   local pass
   pass = light.getPass()
-  for i, mesh in ipairs(level.layer_meshes) do
+  for i, mesh in ipairs(levels.layer_meshes) do
     if (not level_filter) or level_filter == i then
       mesh:draw(pass)
     end
   end
-  for i, mesh in ipairs(level.hatch_meshes) do
-    mesh:draw(pass, mat4(mesh.collider:getPose()))
-  end
+  levels.draw(pass, current_level)
 
   boxxer.draw(pass)
   klaxons.draw(pass)
+  dispensers.draw(pass)
 
   lovr.graphics.submit(pass)
   pass = wpass
@@ -134,30 +163,33 @@ function lovr.draw(wpass)
   pass:setSampler('nearest')
   pass:setShader(shader)
   pass:send('surface_texture', texture)
+  pass:send('fog_color', current_fog)
+
   light.send(pass)
 
-
+--[[
   if lovr.system.isKeyDown('tab') then
     require'phywire'.xray(pass, world)
     return
   end
+--]]
 
   pass:setColor(1,1,1)
-  for i, mesh in ipairs(level.layer_meshes) do
+  for i, mesh in ipairs(levels.layer_meshes) do
     if (not level_filter) or level_filter == i then
       mesh:draw(pass)
     end
   end
-  for i, mesh in ipairs(level.hatch_meshes) do
-    mesh:draw(pass, mat4(mesh.collider:getPose()))
-  end
+  levels.draw(pass, 2)
 
   boxxer.draw(pass)
   klaxons.draw(pass)
+  dispensers.draw(pass)
+
   pass:setShader()
   speck.draw(pass)
 
-  require'phywire'.draw(pass, world)
+  -- require'phywire'.draw(pass, world)
 
   --[[
   pass:setColor(0, 1, 0)
@@ -189,16 +221,25 @@ end
 
 
 function lovr.keypressed(key)
+  if key == 'space' then
+    local dir = boxxer.orientation:direction()
+    local pos = boxxer.position + dir * 10
+    local barrel = levels.addBarrel(pos, current_level)
+    barrel:setLinearVelocity(dir * 100)
+  end
 end
 
 function lovr._wheelmoved(_, dy)
   local dir = dy > 0 and 1 or -1
   level_filter = level_filter or 0
-  level_filter = 1 + (level_filter - 1 + dir) % #level.layer_meshes
+  level_filter = 1 + (level_filter - 1 + dir) % #levels.layer_meshes
   print('level filter', level_filter)
 end
 
 function lovr.mousepressed(x, y, button)
+  if button == 1 then
+    table.remove(levels.hatch_locks[current_level], 1)
+  end
   if button == 3 then
     level_filter = nil
   end

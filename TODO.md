@@ -7,8 +7,8 @@ gate sensor + craft -> change level:
   unload, draw text, change music, change fog color, spawn...
 
 
-* craft
-  HUD
+
+
 * scenery
   column variations
     full length
@@ -17,6 +17,9 @@ gate sensor + craft -> change level:
     on inner/outer shell
   walls in maze-like structure (or pillars as fences/bars)
   barrels
+   barrel clusters
+   barrel trails
+   barrel spawner
 * enemies
   klaxon behavior
     energy beam? health?
@@ -28,16 +31,23 @@ gate sensor + craft -> change level:
     provoke klaxon to shoot beam at gate
     ~3 lasers aimed at sensors and need to be blocked by barells or klaxon remains
     punch the blocking mechanism devices
+    big levers to pull down
+    large rotatable disk with hole that needs to be aligned with hatch opening
+    cluster of mines
+
   unload outer shell colliders, enemies
   activate rendering of current shell
   spawn enemies
 * game
-  main menu, intro
+  intro?
   story blurbs
   ending
 * audio
-  sound positioning
   sfx
+    explosion
+    hatch unlock, gate open
+    boxxer fly sound
+    endgame
   music
 * bling
   particle effects

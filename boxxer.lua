@@ -4,7 +4,12 @@ local fabrik = require'fabrik'
 
 local m = {}
 
-local jet_trail = [==[{color={0.8,0.75,0.62},drawers={{name="spheres",param={radius=0.114,segments=8}}},emit_rate=30.5,lifetime=2,lifetime_random=0.1,lightness_random=0.25,movers={{name="sizefade",param={strength=1,target=0.4441,tau=0.6625}},{name="noisy",param={frequency=1.734,strength=3.171,time_amp=0.1}},{name="colorfade",param={color={1,0.489,0.02891,1},strength=0.5005,tau=1e-05}},{name="colorfade",param={color={0.3333,0,0,1},strength=1.002,tau=1.109}}},position={__type="vector",x=0,y=0,z=0},spawners={{name="cube",param={size=0.1}}},streaming=true,velocity={__type="vector",x=0,y=0.006359,z=1.893709},velocity_random=0.3068}]==]
+local jet_trail = [==[{color={0.8,0.75,0.62},drawers={{name="spheres",param={radius=0.3,segments=8}}},emit_rate=20,lifetime=2.5,lifetime_random=0.1,lightness_random=0.25,movers={{name="sizefade",param={strength=1,target=0.4441,tau=0.6625}},{name="noisy",param={frequency=1.734,strength=3.171,time_amp=0.1}},{name="colorfade",param={color={1,0.489,0.02891,1},strength=0.5005,tau=1e-05}},{name="colorfade",param={color={0.3333,0,0,1},strength=1.002,tau=1.109}}},position={__type="vector",x=0,y=0,z=0},spawners={{name="cube",param={size=0.5}}},streaming=true,velocity={__type="vector",x=0,y=0.006359,z=1.893709},velocity_random=0.4}]==]
+
+local jet_source = lovr.audio.newSource('jet.ogg', {spatial=true, pitchable=true })
+jet_source:setLooping(true)
+jet_source:play()
+jet_source:setVolume(0.05)
 
 local RADIUS = 2.3
 local FORCE = 2e8
@@ -18,29 +23,30 @@ local castshape = lovr.physics.newSphereShape(HAND_RADIUS + 1)
 
 local hand_names = {'left', 'right'}
 
-local PROMPT_SPEED = 12 -- typing chars per second
-local PROMPT_HOLD = 4.5 -- how long prompt is shown, chars per second
+local PROMPT_SPEED = 17 * 4 -- typing chars per second
+local PROMPT_HOLD = 7   * 4 -- how long prompt is shown, chars per second
 m.prompt_queue = {}
 m.prompt = nil
 m.prompt_hud = ''
 m.prompt_time = 0
 m.last_prompt = nil
 
+m.position = vector(0, 0, 0)
+m.orientation = quaternion(0, 0, 0, 0)
 
 function _G.addText(line)
+  print('text:', line)
   table.insert(m.prompt_queue, line)
 end
 
 local function typewriter(dt)
   if not m.prompt or m.prompt_time > #m.prompt / PROMPT_HOLD then
     m.prompt = table.remove(m.prompt_queue, 1)
+    m.prompt_time = 0
   end
   if not m.prompt then
     m.prompt_hud = ''
     return
-  end
-  if (m.last_prompt ~= m.prompt) then
-    m.prompt_time = 0
   end
   local trimmed = m.prompt:gsub('%s+$', '') -- poor man's timing control: use '   ' or 'pause   ' for delays
   m.prompt_hud = string.sub(trimmed, 1, m.prompt_time * PROMPT_SPEED)
@@ -71,12 +77,11 @@ local function makeCockpit(self, threshold)
 end
 
 function m.generate(world)
-  m.position = vector(120, -80, 140) * 0
-  m.orientation = quaternion(0, 0, 0, 0)
   m.emitter = speck.emitterFromString(jet_trail):stream()
   m.world = world
   m.cockpit = makeCockpit()
   m.collider = world:newSphereCollider(m.position, RADIUS)
+  m.collider:setOrientation(m.orientation)
   m.collider:setTag('boxxer')
   m.collider:setLinearDamping(2.8)
   m.collider:setFriction(0)
@@ -97,17 +102,20 @@ function m.generate(world)
     m.cables_upper[handness] = fabrik.new(rep(0.05, 7), m.position)
     m.cables_lower[handness] = fabrik.new(rep(0.1, 9), m.position)
   end
-  return m
 end
 
 
 function m.update(dt)
   local dir = m.orientation:direction()
-  m.emitter:setPosition(m.position - dir * 2)
+  local emitter_pos = m.position - dir * 2.6
+  m.emitter:setPosition(emitter_pos)
   m.emitter.initial_velocity = -2 * dir
 
   local thrust = (lovr.system.isKeyDown('u') and 1) or lovr.headset.getAxis('right', 'trigger')
   thrust = thrust - 0.3 * ((lovr.system.isKeyDown('y') and 1) or lovr.headset.getAxis('left', 'trigger'))
+
+  jet_source:setPosition(emitter_pos)
+  jet_source:setVolume(0.15 + 0.015 * vector(m.collider:getLinearVelocity()):length())
   m.collider:applyForce(dt * dir * thrust * FORCE)
 
   local dz = 0.05 -- deadzone
@@ -169,13 +177,14 @@ function m.update(dt)
     collider:setSensor(target_arm:distance(actual_arm) > 15) -- get out of jail
     if (lovr.headset.isDown(handness, 'grip') or lovr.system.isKeyDown('lshift'))
       and not m.hand_joints[handness] then
-      local grabbed_collider = m.world:overlapShape(castshape, actual_arm, nil, 0, '~fist ~boxxer')
+      local grabbed_collider = m.world:overlapShape(castshape, actual_arm, nil, 0, '~fist ~boxxer ~hatch_sensor ~hatch_broadcast ~dispenser')
       if grabbed_collider and not grabbed_collider:isKinematic() then
         m.hand_joints[handness] = lovr.physics.newWeldJoint(collider, grabbed_collider)
+        --require'repl'()
       end
     end
     if (lovr.headset.wasReleased(handness, 'grip') or lovr.system.wasKeyReleased('lshift')) and m.hand_joints[handness] then
-      m.hand_joints[handness]:destroy()
+      if not m.hand_joints[handness]:isDestroyed() then m.hand_joints[handness]:destroy() end
       m.hand_joints[handness] = nil
     end
     m.cables_upper[handness]:nudge(vector.down * 5 * dt)
@@ -228,7 +237,7 @@ function m.draw(pass)
     m.cables_lower[handness]:drawCapsules(pass, 0.05, 7)
   end
   pass:setColor(0xffccaa)
-  pass:text(m.prompt_hud, mat4(m.position, m.orientation):translate(-.3, 0.3, -RADIUS * 0.8):scale(0.1))
+  pass:text(m.prompt_hud, mat4(m.position, m.orientation):translate(-1.2, 0.3, -RADIUS * 0.75):scale(0.1), 0, 'left', 'top')
 end
 
 return m

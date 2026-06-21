@@ -76,12 +76,11 @@ float ppow(float x, float y) {
 }
 
 /* distance fog */
-const float FogStrength = 0.3;
+const float FogStrength = 0.6;
 const float FogDistance = 0.2;
 const float FogDistanceMul = 0.5;
 const float FogPow = 0.8;
-//uniform vec3 FogColor;
-vec3 FogColor = vec3(0.8, 0.8, 0.8);
+uniform vec3 fog_color;
 
 void addAtanPowFog(inout vec4 color, float fogDensity, float fogDistance, float fogDistanceMul, float fogPow, vec3 fogColor) {
   float d = length(PositionWorld - CameraPositionWorld);
@@ -91,7 +90,7 @@ void addAtanPowFog(inout vec4 color, float fogDensity, float fogDistance, float 
 
 
 void addFog(inout vec4 color) {
-  addAtanPowFog(color, FogStrength, FogDistance, FogDistanceMul, FogPow, FogColor);
+  addAtanPowFog(color, FogStrength, FogDistance, FogDistanceMul, FogPow, fog_color);
 }
 
 
