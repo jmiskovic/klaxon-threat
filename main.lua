@@ -8,7 +8,7 @@ local ambient = lovr.audio.newSource('ambient.ogg')
 ambient:setLooping(true)
 ambient:setVolume(0.1)
 
-local skip_menu = false
+local skip_menu = true
 
 if not skip_menu then
   local speck = require'speck'
@@ -32,7 +32,7 @@ if not skip_menu then
     pass:setColor(0.9, 0.8, 0.3)
     pass:text('· VENDETTA IN STRATOVERSE ·', 0, 1.4, -6, 0.5)
     pass:setColor(0.5, 0.5, 0.4)
-    pass:text('press trigger to\nenter the stratoverse', 0, 1, -4, 0.2 + 0.05 * math.sin(t * 0.2))
+    pass:text('press trigger to\nenter the stratoverse', 0, 0.6, -4, 0.2 + 0.05 * math.sin(t * 0.2))
     music:setVolume((t - 0.5) * 0.02)
     local dt = lovr.timer.getDelta()
     emitter:update(dt)

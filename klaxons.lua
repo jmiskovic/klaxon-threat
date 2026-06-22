@@ -21,7 +21,7 @@ local klaxon_source = lovr.audio.newSource('klaxon.ogg', {spatial=true, pitchabl
 klaxon_source:setSpatialization(1); klaxon_source:setAbsorption(true); klaxon_source:setFalloff(true)
 klaxon_source:setLooping(true)
 
-local DETECTION_RANGE = 100
+local DETECTION_RANGE = 150
 local STOP_RANGE = 30
 local AVOID_RANGE = 30
 local FORCE = 3e8
@@ -67,6 +67,7 @@ function m:destroy()
   self.klaxon_source:stop()
   if not self.collider:isDestroyed() then self.collider:destroy() end
   if not self.side_collider:isDestroyed() then self.side_collider:destroy() end
+  self.deflector_emitter:stop()
 end
 
 

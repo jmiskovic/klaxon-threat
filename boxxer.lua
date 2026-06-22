@@ -12,7 +12,7 @@ jet_source:play()
 jet_source:setVolume(0.05)
 
 local RADIUS = 2.3
-local FORCE = 2e8
+local FORCE = 2e8 * 4
 local TORQUE = 3e7
 
 local HAND_RADIUS = 0.9
@@ -23,8 +23,8 @@ local castshape = lovr.physics.newSphereShape(HAND_RADIUS + 1)
 
 local hand_names = {'left', 'right'}
 
-local PROMPT_SPEED = 17 * 4 -- typing chars per second
-local PROMPT_HOLD = 7   * 4 -- how long prompt is shown, chars per second
+local PROMPT_SPEED = 17 -- typing chars per second
+local PROMPT_HOLD =  7  -- how long prompt is shown, chars per second
 m.prompt_queue = {}
 m.prompt = nil
 m.prompt_hud = ''
@@ -167,8 +167,10 @@ function m.update(dt)
   for i, handness in ipairs(hand_names) do
     local position = vector(lovr.headset.getPosition(handness))
     if handness == 'right' and not lovr.headset.getName() then
-      position = vector(0.3, 1.2, -0.3)
+      head_position = vector(0, 1.7, 0)
+      position = vector(0.3, 1.2, -0.5)
     end
+
     local collider = m.fists[handness]
     local actual_arm = vector(collider:getPosition())
     local target_arm = boxxer_pose:mul((position - vector(0, -0.3, -0.2) - head_position) * vector(HAND_EXTENSION / 2, HAND_EXTENSION * 3 / 8, HAND_EXTENSION) + vector(0, 0, -10))
@@ -180,7 +182,6 @@ function m.update(dt)
       local grabbed_collider = m.world:overlapShape(castshape, actual_arm, nil, 0, '~fist ~boxxer ~hatch_sensor ~hatch_broadcast ~dispenser')
       if grabbed_collider and not grabbed_collider:isKinematic() then
         m.hand_joints[handness] = lovr.physics.newWeldJoint(collider, grabbed_collider)
-        --require'repl'()
       end
     end
     if (lovr.headset.wasReleased(handness, 'grip') or lovr.system.wasKeyReleased('lshift')) and m.hand_joints[handness] then
@@ -213,6 +214,9 @@ function m.draw(pass)
     local shoulder_pos = m.position + m.orientation * vector(outward * 2, -1, -0.3)
     local elbow_pos = shoulder_pos:lerp(fist_pos, 0.2) + m.orientation * vector(outward * 4, -1, 0)
     local hand_pos = vector(m.collider:getWorldPoint(lovr.headset.getPosition(handness)))
+
+    local mx, my = lovr.system.getMousePosition()
+    hand_pos = m.position + m.orientation * vector(-0.3 + mx * 0.001, 0.4 + my * 0.001, -0.1)
 
     pass:setColor(0.4, 0.2, 0.2)
     pass:sphere(hand_pos, 0.06, nil, 6)

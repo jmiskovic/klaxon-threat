@@ -9,7 +9,7 @@ local m = {}
 local blob_spawners = [==[{color={0.2392,0.2996,0.2538},drawers={{name="spheres",param={radius=0.0281,segments=14.05}}},emit_rate=1366,lifetime=0.8392,lifetime_random=0.1,lightness_random=0.25,movers={{name="size fade",param={strength=1.552,target=1.541,tau=0.4892}},{name="size fade",param={strength=1.324,target=0.06091,tau=0.9372}}},position={__type="vector",x=0,y=0,z=0},spawners={{name="cube",param={size=15.11}}},streaming=true,velocity={__type="vector",x=0,y=0,z=0},velocity_random=1e-05}]==]
 local explode_pe = [==[{color={0.9808,0.9543,0},drawers={{name="spheres",param={radius=2.5,segments=8}}},emit_rate=300,lifetime=0.5,lifetime_random=0.6473,lightness_random=0.25,movers={{name="size fade",param={strength=1,target=0.252,tau=0.6625}},{name="color fade",param={color={1,0.489,0.02891,1},strength=0.5005,tau=1e-05}},{name="color fade",param={color={0.3333,0,0,1},strength=1.002,tau=1.109}}},position={__type="vector",x=0,y=0,z=0},spawners={{name="cube",param={size=0.1}}},streaming=false,velocity={__type="vector",x=0,y=0,z=0},velocity_random=12}]==]
 
-local endgame_pe1 = [==[{color={0.9177,0.4387,0.01571},drawers={{name="lines",param={length=22.69,segments=4.855,thickness=0.3319}}},emit_rate=28.67,lifetime=7.276,lifetime_random=0.1713,lightness_random=0.9404,movers={{name="noisy",param={frequency=0.8044,strength=21.69,time_amp=0.1}},{name="attractor",param={position={__type="vector",x=0,y=0,z=0},relative=false,strength=400}},{name="color fade",param={color={0,0.9618,1,1},strength=0.4662,tau=0.5198}},{name="color fade",param={color={1,0.9429,0,1},strength=0.5712,tau=0.968}},{name="dampener",param={only_vertical=false,strength=0.1904}}},position={__type="vector",x=0,y=0,z=0},spawners={{name="cube",param={size=0.698}}},streaming=false,velocity={__type="vector",x=0,y=0,z=0},velocity_random=17.96}]==]
+local endgame_pe1 = [==[{color={0.9177,0.4387,0.01571},drawers={{name="lines",param={length=22.69,segments=4.855,thickness=0.3319}}},emit_rate=70,lifetime=7.276,lifetime_random=0.1713,lightness_random=0.9404,movers={{name="noisy",param={frequency=0.8044,strength=21.69,time_amp=0.1}},{name="attractor",param={position={__type="vector",x=0,y=0,z=0},relative=false,strength=400}},{name="color fade",param={color={0,0.9618,1,1},strength=0.4662,tau=0.5198}},{name="color fade",param={color={1,0.9429,0,1},strength=0.5712,tau=0.968}},{name="dampener",param={only_vertical=false,strength=0.1}}},position={__type="vector",x=0,y=0,z=0},spawners={{name="cube",param={size=0.698}}},streaming=false,velocity={__type="vector",x=0,y=0,z=0},velocity_random=20}]==]
 local endgame_pe2 = [==[{color={0.28,0.4725,1},drawers={{name="spheres",param={radius=0.5403,segments=17.54}}},emit_rate=71.53,lifetime=0.1038,lifetime_random=0.1,lightness_random=0.8331,movers={{name="size fade",param={strength=1,target=5,tau=0.15}},{name="size fade",param={strength=1,target=0.01,tau=0.9}}},position={__type="vector",x=0,y=0,z=0},spawners={{name="cube",param={size=1.716}}},streaming=false,velocity={__type="vector",x=0,y=0,z=0},velocity_random=0.2}]==]
 
 local endgame_emitter_1 = speck.emitterFromString(endgame_pe1)
@@ -17,20 +17,21 @@ local endgame_emitter_2 = speck.emitterFromString(endgame_pe2)
 
 local explode_emitter = speck.emitterFromString(explode_pe)
 
-local LAYER_COUNT = 7
+local LAYER_COUNT = 9
 
-m.radii = {}
-for i = 1, LAYER_COUNT do m.radii[i] = -80 + 120 * i + lovr.math.randomNormal(10, 0) + i * i * 2 end
+m.radii = { 40 }
+for i = 2, LAYER_COUNT do m.radii[i] = -80 + 30 * i + lovr.math.randomNormal(20, 0) + i * i * 2 end
+m.radii[LAYER_COUNT] = m.radii[LAYER_COUNT] + 50
 m.radii[0] = 0
 
 local COLUMN_RADIUS = 24
 local SHELL_THICKNESS = 4
-local HATCH_ROTATION = 0.85
+local HATCH_ROTATION = 1.5
 
 
-local BLAST_RADIUS = 40 * 2
-local EXPLOSION_RADIUS = 70 * 0.1
-local EXPLOSION_FORCE = 2e9
+local BLAST_RADIUS = 40
+local EXPLOSION_RADIUS = 50
+local EXPLOSION_FORCE = 5e8
 
 local BROADCAST_R = 40
 
@@ -240,7 +241,10 @@ function m.generate(world, klaxons, boxxer)
       for _, triangle in ipairs(triangles) do
         local pA, pB, pC = unpack(triangle)
         local center = (pA + pB + pC) / 3
-        pA = pA:lerp(center, 0.15); pB = pB:lerp(center, 0.15); pC = pC:lerp(center, 0.15)
+        --pA = pA:lerp(center, 0.15); pB = pB:lerp(center, 0.15); pC = pC:lerp(center, 0.15)
+        pA = pA + (center - pA):normalize() * 3
+        pB = pB + (center - pB):normalize() * 3
+        pC = pC + (center - pC):normalize() * 3
         local points = {
           pA, pB, pC,
           pA - hatch_normal * SHELL_THICKNESS, pB - hatch_normal * SHELL_THICKNESS, pC - hatch_normal * SHELL_THICKNESS
@@ -258,10 +262,10 @@ function m.generate(world, klaxons, boxxer)
     end
     if i < LAYER_COUNT then
       dots.onSphere(3 + midradius * midradius / 8000):scale(midradius):map(function(pC)
-        local c, _, x, y, z = world:raycast(pC, pC * 10)
+        local c, _, x, y, z, nx, ny, nz = world:raycast(pC, pC * 10)
         local p = vector(x, y, z)
         if c and not world:overlapShape(castshape, p, nil, COLUMN_RADIUS * 2, 'hatch_sensor') then
-          table.insert(m.dispenser_poses[i], mat4():target(p, pC))
+          table.insert(m.dispenser_poses[i], mat4():target(p, p + vector(nx, ny, nz)))
         end
       end)
       print(#m.dispenser_poses[i], 'dispensers on level', i, 'with r', midradius)
@@ -291,10 +295,10 @@ function m.generate(world, klaxons, boxxer)
     for i = 1, n do
       local p = qo:slerp(qt, i / (n + 1)):direction() * r
       table.insert(m.barrel_seeds[layer], p)
-      local c, _, x, y, z = world:raycast(p, vector(0))
+      local c, _, x, y, z, nx, ny, nz = world:raycast(p, vector(0))
       local interpos = vector(x, y, z)
       if c and not world:overlapShape(castshape, interpos, nil, COLUMN_RADIUS * 2, 'hatch_sensor') then
-        table.insert(m.dispenser_poses[layer], mat4():target(interpos, p))
+        table.insert(m.dispenser_poses[layer], mat4():target(interpos, interpos + vector(nx, ny, nz)))
       end
     end
   end
@@ -335,13 +339,14 @@ function m.generate(world, klaxons, boxxer)
 
     ---[==[ prison bars
     function(mesh, palette, layer)
-      local COLUMN_RADIUS = COLUMN_RADIUS / 2
+      local COLUMN_RADIUS = COLUMN_RADIUS / 3
       local midradius = m.radii[layer] * 0.5 + m.radii[layer - 1] * 0.5
-      dots.onSphere(12):scale(midradius):map(
+      dots.onSphere(15):scale(midradius):map(
         function(origin)
-          local target = origin:normalize() + vector(lovr.math.random() - 0.5, lovr.math.random() - 0.5, lovr.math.random() - 0.5)
+          local target = origin:normalize() + 3 * vector(lovr.math.random() - 0.5, lovr.math.random() - 0.5, lovr.math.random() - 0.5)
           target = target:normalize() * midradius
-          local n = origin:distance(target) / 30
+          local n = origin:distance(target) / 25 + 3
+          print('prison column length', n)
           local qo = quaternion.lookdir(origin)
           local qt = quaternion.lookdir(target)
           for i = 1, n do
@@ -399,7 +404,7 @@ function m.generate(world, klaxons, boxxer)
                 :translate(pB + (pA - pB):normalize() * 3.5)
                 :rotate(quaternion.lookdir(pB - pA))
                 :rotate(math.pi / 2, 1, 0, 0)
-                :scale(COLUMN_RADIUS * 1.5, 3.5, COLUMN_RADIUS * 1.5))
+                :scale(COLUMN_RADIUS * 1.5, 7, COLUMN_RADIUS * 1.5))
               :setColor(palette[2]))
             local column_collider = world:newMeshCollider(column.vlist, column.ilist)
             column_collider:setTag('level')
@@ -410,14 +415,64 @@ function m.generate(world, klaxons, boxxer)
 
     ---[==[ barrel clusters
     function(mesh, palette, layer)
-      local cluster = dots.onSphere(8):scale(10)
       local arrangement = dots.onSphere(35):scale(m.radii[layer] * 0.5 + m.radii[layer - 1] * 0.5)
+      local cluster = dots.onSphere(8):scale(10)
       local count = 0
-      for j, p in ipairs(cluster * arrangement) do
-        table.insert(m.barrel_seeds[layer], p)
-        count = count + 1
+      for i, p in ipairs(arrangement) do
+        if lovr.math.random() > 0.7 then
+          mesh:mergeIn(solids.sphere(1)
+            :transform(mat4(p):scale(10 + 20 * lovr.math.random()))
+            :setColor(palette[1 + i % #palette]))
+        else
+          for j, pos in ipairs(cluster:transform(mat4(p))) do
+            table.insert(m.barrel_seeds[layer], pos)
+            count = count + 1
+          end
+        end
       end
       print('prepared', count, 'barrels')
+    end,
+
+    ---[==[ rails
+    function(mesh, palette, layer)
+      local midradius = m.radii[layer] * 0.5 + m.radii[layer - 1] * 0.5
+      local height = 10
+      local COLUMN_RADIUS = 3
+      local RAIL_RADIUS = 5
+      local tips = {}
+      local arrangement = dots.onSphere(35):transform(mat4():rotate(lovr.math.random() * 2 * math.pi):scale(midradius))
+      arrangement:map(function(pC)
+        local colliderB, _, x, y, z, nx, ny, nz = world:raycast(pC, pC * 4)
+        local pB = vector(x, y, z)
+        if colliderB and not world:overlapShape(castshape, pB, nil, COLUMN_RADIUS * 2, 'hatch_sensor') then
+          local pA = pB + vector(nx, ny, nz) * height
+          table.insert(tips, pA)
+          local column = solids.cylinder(8)
+            :transform(mat4()
+              :translate((pA + pB) * 0.5)
+              :rotate(quaternion.lookdir(pA - pB))
+              :rotate(math.pi / 2, 1, 0, 0)
+              :scale(COLUMN_RADIUS, pA:distance(pB), COLUMN_RADIUS))
+            :setColor(palette[2])
+          mesh:mergeIn(column)
+        end
+      end)
+      tips = dots.new(tips):hamiltonianConnect(start_index)
+      for iA, edges in pairs(tips.edge_map) do
+        for iB, w in pairs(edges) do
+          local pA = tips[iA]
+          local pB = tips[iB]
+          print('rail', iA, iB, 'layer', layer)
+          local rail = solids.cylinder(4)
+            :transform(mat4()
+              :translate((pA + pB) * 0.5)
+              :rotate(quaternion.lookdir(pA - pB))
+              :rotate(math.pi / 2, 1, 0, 0)
+              :scale(RAIL_RADIUS, pA:distance(pB), RAIL_RADIUS))
+            :setColor(palette[1 + (iA + iB) % #palette])
+          mesh:mergeIn(rail)
+        end
+      end
     end,
     --]==]
 
@@ -427,13 +482,25 @@ function m.generate(world, klaxons, boxxer)
     --]==]
   }
 
+  local deck = {}
   for i = 2, LAYER_COUNT do
     local palette = palettes[i]
     local mesh = m.layer_meshes[i]
     if i == LAYER_COUNT then
       firstLayer(mesh, palette, i)
     else
-      generation_functions[lovr.math.random(1, #generation_functions)](mesh, palette, i)
+      if #deck == 0 then
+        for j = 1, #generation_functions do
+          table.insert(deck, j)
+        end
+        for j = 1, #generation_functions do
+          local k = lovr.math.random(1, #generation_functions)
+          deck[j], deck[k] = deck[k], deck[j]
+        end
+      end
+      local gen_index = 5-- table.remove(deck)
+      print('using generation fn', gen_index)
+      generation_functions[gen_index](mesh, palette, i)
     end
   end
 
@@ -488,7 +555,7 @@ function m.draw(pass, layer)
         end
       end
       endgame_emitter_1.color = palette[1 + (math.floor(t/2)) % #palette]
-
+      current_fog = palette[1 + (math.floor(t/4)) % #palette]
     end
   end
   local p1, p2, p3 = mat4(), mat4(), mat4()
@@ -528,7 +595,6 @@ function m.changeLayer(prev, next)
     _G.addText = function() end
     endgame_emitter_1:stream()
     endgame_emitter_2:stream()
-    next = nil
   end
   print('change layer', prev, '->', next)
   if prev then
@@ -544,13 +610,13 @@ function m.changeLayer(prev, next)
     m.barrels = {}
     dispensers.list = {}
 
-    if prev == LAYER_COUNT then addText('is there another sphere inside of it?') end
+    if prev == LAYER_COUNT then addText('there appears to be another sphere inside of it?') end
   else
-    --[[
     addText('          ')
     addText('what a strange place this is')
-    addText('i always wondered where those bastards come from')
+    addText('i always wondered where those klaxon bastards come from')
     addText('right.. remember my training! what was it?')
+    addText('    ')
     addText('my hand movements control the large robotic arms')
     addText('i can use GRIP to grab moving objects')
     addText('RIGHT STICK controls my rotation')
@@ -558,10 +624,12 @@ function m.changeLayer(prev, next)
     addText('move forward with my RIGHT TRIGGER')
     addText('and backward with my LEFT TRIGGER')
     addText('i can try it all out before going deeper')
-    addText('especially grabbing objects with the GRIP')
-    --]]
+    addText('especially grabbing objects with the GRIP       ')
+    addText('                       ')
+    addText('the scouts mentioned some huge hatches that would not open for them')
+    addText('i might have to use the explosives                              ')
   end
-  if next then
+  if next and next ~= 1 then
     local klaxons = require'klaxons'
     -- generate barrels & klaxons
     local count = 0
@@ -580,18 +648,18 @@ function m.changeLayer(prev, next)
 
     m.klaxons.list = {}
 
-    if next > 1 then
-      local KLAXON_COUNT = math.min(7, (LAYER_COUNT - next) * 3)
+    if next > 1 and prev then
+      local KLAXON_COUNT = math.floor(next + next * lovr.math.random())
       print(KLAXON_COUNT, 'klaxons on level', next)
       for i = 1, KLAXON_COUNT do
-        local klaxon = klaxons.spawn(randomPosInLayer(next), next)
+        local klaxon = klaxons.spawn(randomPosInLayer(next, 15), next)
       end
     end
 
     current_fog = palettes[next][#palettes[next]]
     -- end game condition
-    current_level = next
   end
+  current_level = next
 end
 
 return m

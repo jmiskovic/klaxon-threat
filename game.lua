@@ -39,7 +39,7 @@ thump_source:setSpatialization(1); thump_source:setAbsorption(true); thump_sourc
 local explode_source = lovr.audio.newSource('xplode.ogg', {spatial=true, pitchable=true })
 explode_source:setSpatialization(1); explode_source:setAbsorption(true); explode_source:setFalloff(15, .1)
 
-local BARREL_EXPLODE_VELOCITY = 25
+local BARREL_EXPLODE_VELOCITY = 20
 
 
 local to_explode = {}
@@ -103,11 +103,13 @@ local level_filter = nil
 
 function lovr.update(dt)
   for i, explode in ipairs(to_explode) do
-    local snd = explode_source:clone()
-    snd:setPitch(1 + lovr.math.randomNormal(0.1, 0))
-    snd:setPosition(explode:getPosition())
-    snd:play()
-    levels.explodeBarrel(explode)
+    if not explode:isDestroyed() then
+      local snd = explode_source:clone()
+      snd:setPitch(1 + lovr.math.randomNormal(0.1, 0))
+      snd:setPosition(explode:getPosition())
+      snd:play()
+      levels.explodeBarrel(explode)
+    end
   end
   to_explode = {}
   boxxer.update(dt)

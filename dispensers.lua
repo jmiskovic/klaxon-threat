@@ -11,7 +11,18 @@ local button_shape = solids.sphere(1):scale(6):map(function(x,y,z)
     return x, y, z
   end)
 
-local frame_shape = solids.cylinder(5):transform(mat4(0, 0, -3):rotate(math.pi/2,1,0,0):scale(8, 14, 8))
+local frame_shape = solids.cylinder(12)
+  :map(function(x, y, z)
+    if y < 0 then
+      x = x * 1.5
+      z = z * 1.5
+    end
+    return x, y, z
+  end)
+  :transform(mat4(0, 0, -3)
+    :rotate(-math.pi/2,1,0,0)
+    :scale(8, 14, 8))
+  :mergeIn(solids.cylinder(12):transform(mat4(0, 0, 1.5):rotate(-math.pi/2, 1,0,0):scale(14, 5, 14)))
 
 
 function m.new(pose, layer)
@@ -60,17 +71,12 @@ function m.draw(pass)
     pass:cylinder(self.button_pos, pose * vector(0,0,0), 1.8, false, nil, nil, 6)
     if extrusion < -2 and self.last_extrusion >= -2 then
       local levels = require'levels'
-      local barrel = levels.addBarrel(self.pos + self.dir * 10, self.layer)
+      local barrel = levels.addBarrel(self.pos + self.dir * 15, self.layer)
       barrel:setLinearVelocity(self.dir * 10)
       self.cooldown = 5
     end
     self.last_extrusion = extrusion
   end
-end
-
-
-function m:dispense()
-  m.addBarrel(pos, self.layer)
 end
 
 
