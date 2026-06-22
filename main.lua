@@ -8,7 +8,7 @@ local ambient = lovr.audio.newSource('ambient.ogg')
 ambient:setLooping(true)
 ambient:setVolume(0.1)
 
-local skip_menu = true
+local skip_menu = false
 
 if not skip_menu then
   local speck = require'speck'

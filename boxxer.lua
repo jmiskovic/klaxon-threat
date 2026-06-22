@@ -6,13 +6,14 @@ local m = {}
 
 local jet_trail = [==[{color={0.8,0.75,0.62},drawers={{name="spheres",param={radius=0.3,segments=8}}},emit_rate=20,lifetime=2.5,lifetime_random=0.1,lightness_random=0.25,movers={{name="sizefade",param={strength=1,target=0.4441,tau=0.6625}},{name="noisy",param={frequency=1.734,strength=3.171,time_amp=0.1}},{name="colorfade",param={color={1,0.489,0.02891,1},strength=0.5005,tau=1e-05}},{name="colorfade",param={color={0.3333,0,0,1},strength=1.002,tau=1.109}}},position={__type="vector",x=0,y=0,z=0},spawners={{name="cube",param={size=0.5}}},streaming=true,velocity={__type="vector",x=0,y=0.006359,z=1.893709},velocity_random=0.4}]==]
 
+
 local jet_source = lovr.audio.newSource('jet.ogg', {spatial=true, pitchable=true })
 jet_source:setLooping(true)
 jet_source:play()
 jet_source:setVolume(0.05)
 
 local RADIUS = 2.3
-local FORCE = 2e8 * 4
+local FORCE = 2e8
 local TORQUE = 3e7
 
 local HAND_RADIUS = 0.9
@@ -215,8 +216,8 @@ function m.draw(pass)
     local elbow_pos = shoulder_pos:lerp(fist_pos, 0.2) + m.orientation * vector(outward * 4, -1, 0)
     local hand_pos = vector(m.collider:getWorldPoint(lovr.headset.getPosition(handness)))
 
-    local mx, my = lovr.system.getMousePosition()
-    hand_pos = m.position + m.orientation * vector(-0.3 + mx * 0.001, 0.4 + my * 0.001, -0.1)
+    --local mx, my = lovr.system.getMousePosition()
+    --hand_pos = m.position + m.orientation * vector(-0.3 + mx * 0.001, 0.4 + my * 0.001, -0.1)
 
     pass:setColor(0.4, 0.2, 0.2)
     pass:sphere(hand_pos, 0.06, nil, 6)

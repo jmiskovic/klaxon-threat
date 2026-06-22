@@ -17,10 +17,10 @@ local endgame_emitter_2 = speck.emitterFromString(endgame_pe2)
 
 local explode_emitter = speck.emitterFromString(explode_pe)
 
-local LAYER_COUNT = 9
+local LAYER_COUNT = 8
 
 m.radii = { 40 }
-for i = 2, LAYER_COUNT do m.radii[i] = -80 + 30 * i + lovr.math.randomNormal(20, 0) + i * i * 2 end
+for i = 2, LAYER_COUNT do m.radii[i] = -80 + 150 * i + lovr.math.randomNormal(20, 0) + i * i * 2 end
 m.radii[LAYER_COUNT] = m.radii[LAYER_COUNT] + 50
 m.radii[0] = 0
 
@@ -52,7 +52,7 @@ shell_mesh.ilist[#shell_mesh.ilist] = nil
 shell_mesh.ilist[#shell_mesh.ilist] = nil
 shell_mesh:mergeIn(shell_mesh:flipWinding())
 
-local hatch_lock_mesh = solids.bipyramid(5):scale(8, 12, 8)
+local hatch_lock_mesh = solids.bipyramid(5):scale(8, 12, 8):setColor(1, 0, 0.6)
 
 
 local function getRange(layer)
@@ -346,7 +346,6 @@ function m.generate(world, klaxons, boxxer)
           local target = origin:normalize() + 3 * vector(lovr.math.random() - 0.5, lovr.math.random() - 0.5, lovr.math.random() - 0.5)
           target = target:normalize() * midradius
           local n = origin:distance(target) / 25 + 3
-          print('prison column length', n)
           local qo = quaternion.lookdir(origin)
           local qt = quaternion.lookdir(target)
           for i = 1, n do
@@ -437,8 +436,8 @@ function m.generate(world, klaxons, boxxer)
     function(mesh, palette, layer)
       local midradius = m.radii[layer] * 0.5 + m.radii[layer - 1] * 0.5
       local height = 10
-      local COLUMN_RADIUS = 3
-      local RAIL_RADIUS = 5
+      local COLUMN_RADIUS = 5
+      local RAIL_RADIUS = 7
       local tips = {}
       local arrangement = dots.onSphere(35):transform(mat4():rotate(lovr.math.random() * 2 * math.pi):scale(midradius))
       arrangement:map(function(pC)
@@ -462,7 +461,6 @@ function m.generate(world, klaxons, boxxer)
         for iB, w in pairs(edges) do
           local pA = tips[iA]
           local pB = tips[iB]
-          print('rail', iA, iB, 'layer', layer)
           local rail = solids.cylinder(4)
             :transform(mat4()
               :translate((pA + pB) * 0.5)
@@ -498,7 +496,7 @@ function m.generate(world, klaxons, boxxer)
           deck[j], deck[k] = deck[k], deck[j]
         end
       end
-      local gen_index = 5-- table.remove(deck)
+      local gen_index = table.remove(deck)
       print('using generation fn', gen_index)
       generation_functions[gen_index](mesh, palette, i)
     end
@@ -569,29 +567,34 @@ function m.draw(pass, layer)
     pass:setColor(barrel.color)
     pass:cylinder(p1:scale(2, 2, 5), true, nil, nil, 9)
   end
-  for layer = 1, LAYER_COUNT do
-    for i, lock_collider in ipairs(m.hatch_locks[layer]) do
-      hatch_lock_mesh:draw(pass, mat4(lock_collider:getPose()))
-    end
-  end
+  pass:setColor(1,1,1)
   for i, list in ipairs(m.hatch_triangles) do
     for j, mesh in ipairs(list) do
       mesh:draw(pass, mat4(mesh.collider:getPose()))
     end
   end
-  pass:setColor(0, 0, 1)
+  --[[
   for i, hatch_sensor_mesh in ipairs(m.hatch_sensor_meshes) do
     hatch_sensor_mesh:draw(pass)
+  end
+  --]]
+  local s = 0.8 + 0.2 * math.sin(lovr.timer.getTime() * 7)
+  pass:setColor(s, s, s)
+  for layer = 1, LAYER_COUNT do
+    for i, lock_collider in ipairs(m.hatch_locks[layer]) do
+      hatch_lock_mesh:draw(pass, mat4(lock_collider:getPose()))
+    end
   end
 end
 
 
+
 function m.changeLayer(prev, next)
   if next == 1 then
-    addText('it is done!\nthe innermost core is breached!')
+    addText('it is done!\nthe innermost core is breached!   ')
     addText('<incomming transmittion from beyond the 4th wall>')
     addText('WELL DONE! YOU\'VE WON THE GAME!')
-    addText('THANK YOU FOR PLAYING\nTHE KLAXON THREAT XI - VENDETTA IN STRATOVERSE\nSEE YOU IN THE NEXT ONE                                                                                                        ')
+    addText('THANK YOU FOR PLAYING\nTHE KLAXON THREAT XI - VENDETTA IN STRATOVERSE\nAND SEE YOU IN THE NEXT ONE                                                                                                        ')
     _G.addText = function() end
     endgame_emitter_1:stream()
     endgame_emitter_2:stream()
@@ -609,24 +612,23 @@ function m.changeLayer(prev, next)
     end
     m.barrels = {}
     dispensers.list = {}
-
     if prev == LAYER_COUNT then addText('there appears to be another sphere inside of it?') end
   else
     addText('          ')
-    addText('what a strange place this is')
-    addText('i always wondered where those klaxon bastards come from')
+    addText('what a strange place')
+    addText('i always wondered where those klaxon bastards came from')
     addText('right.. remember my training! what was it?')
     addText('    ')
-    addText('my hand movements control the large robotic arms')
-    addText('i can use GRIP to grab moving objects')
-    addText('RIGHT STICK controls my rotation')
-    addText('with the LEFT STICK i can navigate around')
-    addText('move forward with my RIGHT TRIGGER')
-    addText('and backward with my LEFT TRIGGER')
-    addText('i can try it all out before going deeper')
-    addText('especially grabbing objects with the GRIP       ')
-    addText('                       ')
-    addText('the scouts mentioned some huge hatches that would not open for them')
+    addText('my hand movements control the large robotic arms    ')
+    addText('i can use GRIP to grab moving objects    ')
+    addText('RIGHT STICK controls my rotation    ')
+    addText('with the LEFT STICK i can navigate around    ')
+    addText('move forward with my RIGHT TRIGGER    ')
+    addText('and backward with my LEFT TRIGGER    ')
+    addText('i can try it all out before going deeper    ')
+    addText('especially grabbing objects with the GRIP and thowing them       ')
+    addText('                                              ')
+    addText('scouts mentioned big hatches they couldn\'t get to open')
     addText('i might have to use the explosives                              ')
   end
   if next and next ~= 1 then
@@ -649,7 +651,7 @@ function m.changeLayer(prev, next)
     m.klaxons.list = {}
 
     if next > 1 and prev then
-      local KLAXON_COUNT = math.floor(next + next * lovr.math.random())
+      local KLAXON_COUNT = math.floor(next + next * 2 * lovr.math.random() + 0.5)
       print(KLAXON_COUNT, 'klaxons on level', next)
       for i = 1, KLAXON_COUNT do
         local klaxon = klaxons.spawn(randomPosInLayer(next, 15), next)

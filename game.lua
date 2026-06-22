@@ -16,7 +16,6 @@ function _G.determineLevel()
   return #levels.radii
 end
 
-
 local world = lovr.physics.newWorld{tags={'boxxer', 'level', 'hatch', 'hatch_sensor', 'hatch_broadcast', 'hatch_lock', 'klaxon', 'fist', 'head', 'barrel', 'dispenser'}}
 world:disableCollisionBetween('boxxer', 'fist')
 world:disableCollisionBetween('fist', 'hatch_sensor') -- lol
@@ -134,7 +133,7 @@ light.load(512)
 light.gpu.light_color = vector(1, 0.95, 0.7)
 light.gpu.shadow_color = vector(0.4, 0.3, 0.4)
 light.gpu.falloff_exp = -4
-_G.current_fog = vec3(0.8, 0.8, 0.8)
+_G.current_fog = vec3(0.0, 0.1, 0.05)
 local shader = lovr.graphics.newShader('uber.vert', 'uber.frag')
 local texture = lovr.graphics.newTexture('surface.jpg')
 

@@ -10,7 +10,7 @@ m.__index = m
 m.list = {}
 
 local deflector_preset = [==[{color={0.962,0.02962,0.006644},drawers={{name="spheres",param={radius=0.4257,segments=7.025}}},emit_rate=297.6,lifetime=0.643,lifetime_random=0.2082,lightness_random=0.25,movers={{name="color fade",param={color={1,0.9708,0,1},strength=0.2644,tau=0.2621}},{name="color fade",param={color={0,0.5735,0.9452,1},strength=1.804,tau=0.8503}},{name="color fade",param={color={0.8122,0,0.6391,1},strength=3.548,tau=1.311}},{name="size fade",param={strength=1.547,target=0.4222,tau=0.9934}}},position={__type="vector",x=0,y=0,z=0},spawners={{name="sphere",param={radius=1.365}}},streaming=false,velocity={__type="vector",x=0,y=-0.0001672,z=0},velocity_random=2.817}]==]
-local explode_preset = [==[{color={0.2252,0.219,0.2135},drawers={{name="lines",param={length=33.24,segments=3.01,thickness=0.118}}},emit_rate=28.46,lifetime=1.596,lifetime_random=0.1713,lightness_random=0.9404,movers={{name="orthogonal",param={strength=1.354}}},position={__type="vector",x=0,y=0,z=0},spawners={{name="cube",param={size=2.021}}},streaming=false,velocity={__type="vector",x=0,y=0,z=0},velocity_random=8.826}]==]
+local explode_preset = [==[{color={0.2252,0.219,0.2135},drawers={{name="lines",param={length=33.24,segments=3.01,thickness=0.118}}},emit_rate=28.46,lifetime=3,lifetime_random=0.1713,lightness_random=0.9404,movers={{name="orthogonal",param={strength=1.354}}},position={__type="vector",x=0,y=0,z=0},spawners={{name="cube",param={size=2.021}}},streaming=false,velocity={__type="vector",x=0,y=0,z=0},velocity_random=8.826}]==]
 
 local explode_emitter = speck.emitterFromString(explode_preset)
 
@@ -25,7 +25,7 @@ local DETECTION_RANGE = 150
 local STOP_RANGE = 30
 local AVOID_RANGE = 30
 local FORCE = 3e8
-local TORQUE = 2e8
+local TORQUE = 6e8
 
 local DEFLECTOR_COOLDOWN = 15
 local DEFLECTOR_SPEED = 30
@@ -85,7 +85,9 @@ function m.update(dt)
       self.slider:destroy()
       self.slider = nil
       self.destroyed_duration = 0
-      explode_emitter:setPosition(position)
+      local side_position = vector(self.side_collider:getPosition())
+      local sphere_position = position:lerp(side_position, 0.65)
+      explode_emitter:setPosition(sphere_position)
       explode_emitter:burst()
     end
     if self.destroyed_duration then
@@ -100,7 +102,7 @@ function m.update(dt)
       if not self.is_alert then -- not alert, scanning
         local collider = m.world:raycast(position, boxxer_position, '~klaxon')
         if collider == boxxer.collider and boxxer_position:distance(position) < DETECTION_RANGE then
-          addText('<enemy klaxon locked onto us>')
+          addText('enemy klaxon locked onto us')
           self.is_alert = true
           self.klaxon_source:play()
           self.target = boxxer_position
